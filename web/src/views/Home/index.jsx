@@ -1,11 +1,10 @@
 import React, {Component} from "react";
-import Cookies from "react-cookies";
 import {Dropdown, Layout, Menu} from "antd";
 import DocumentTitle from "react-document-title";
 import {Link, Redirect, Route, Switch} from "react-router-dom";
 import * as Icon from "@ant-design/icons";
 import {LogoutOutlined, SettingOutlined} from "@ant-design/icons";
-import * as Setting from "../../Setting";
+import * as Settings from "../../Setting";
 import * as AccountBackend from "../../backend/AccountBackend";
 
 import MarkTasks from "../Mark/MarkTasks";
@@ -50,14 +49,9 @@ export default class index extends Component {
     permissionList = menuList
 
     componentDidMount() {
-      console.log(this.props);
       this.getAccount();
       this.userInfo();
-      setTimeout(() => {
-        console.log(this.state);
-      }, 5000);
       let defaultpage = "/home/mark-tasks";
-      console.log(defaultpage);
       this.setState(
         {current: defaultpage.substring(defaultpage.lastIndexOf("/") + 1, defaultpage.length)}
       );
@@ -72,25 +66,21 @@ export default class index extends Component {
     }
 
     userInfo = () => {
-      if(Cookies.load("openscore_session_id")) {
-        group.userInfo({supervisorId: 1})
-          .then((res) => {
-            if (res.data.status === "10000") {
-              this.setState({
-                userInfo: res.data.data.userInfo,
-              });
-              console.log(res.data.data.userInfo);
-              localStorage.setItem("userInfo", JSON.stringify(res.data.data.userInfo));
-            }
-          })
-          .catch((e) => {
-            console.log(e);
-          });
-        localStorage.setItem("userInfo", JSON.stringify(this.state.userInfo));
-      }
+      group.userInfo({supervisorId: 1})
+        .then((res) => {
+          if (res.data.status === "10000") {
+            this.setState({
+              userInfo: res.data.data.userInfo,
+            });
+            localStorage.setItem("userInfo", JSON.stringify(res.data.data.userInfo));
+          }
+        })
+        .catch((e) => {
+          Settings.showMessage("error", e);
+        });
     }
     getAccount() {
-      if(localStorage.getItem("account") === "") {
+      if(!localStorage.getItem("account") || localStorage.getItem("account") === "null") {
         AccountBackend.getAccount()
           .then((res) => {
             this.setState({
@@ -100,10 +90,7 @@ export default class index extends Component {
           });
       } else{
         this.setState({
-          account: {
-            user_type: localStorage.getItem("account"),
-            token: localStorage.getItem("token"),
-          },
+          account: JSON.parse(localStorage.getItem("account")),
         });
       }
     }
@@ -113,28 +100,26 @@ export default class index extends Component {
         expired: false,
         submitted: false,
       });
-
       AccountBackend.signout()
         .then((res) => {
-          localStorage.removeItem("account");
-          localStorage.removeItem("userInfo");
+          localStorage.setItem("account", "");
+          localStorage.setItem("userInfo", "");
           if (res.status === "ok") {
             this.setState({
               account: null,
               userInfo: null,
             });
-            Cookies.remove("openscore_session_id");
-            Setting.showMessage("success", "Successfully logged out, redirected to homepage");
-            Setting.goToLink("/");
+            Settings.showMessage("success", "Successfully logged out, redirected to homepage");
+            Settings.goToLink("/");
           } else {
-            Setting.showMessage("error", `Logout failed: ${res.msg}`);
+            Settings.showMessage("error", `Logout failed: ${res.msg}`);
           }
         });
     }
 
     handleRightDropdownClick(e) {
       if (e.key === "0") {
-        Setting.openLink(Setting.getMyProfileUrl(this.state.account));
+        Settings.openLink(Settings.getMyProfileUrl(this.state.account));
       } else if (e.key === "1") {
         this.logout();
       }
@@ -143,14 +128,14 @@ export default class index extends Component {
     // renderAvatar() {
     //   if (this.state.account.avatar === "") {
     //     return (
-    //       <Avatar style={{backgroundColor: Setting.getAvatarColor(this.state.account.name), verticalAlign: "middle"}} size="large">
-    //         {Setting.getShortName(this.state.account.name)}
+    //       <Avatar style={{backgroundColor: Settings.getAvatarColor(this.state.account.name), verticalAlign: "middle"}} size="large">
+    //         {Settings.getShortName(this.state.account.name)}
     //       </Avatar>
     //     );
     //   } else {
     //     return (
     //       <Avatar src={this.state.account.avatar} style={{verticalAlign: "middle"}} size="large">
-    //         {Setting.getShortName(this.state.account.name)}
+    //         {Settings.getShortName(this.state.account.name)}
     //       </Avatar>
     //     );
     //   }
@@ -183,11 +168,10 @@ export default class index extends Component {
     }
 
     renderAccount() {
-      console.log("1111111111", this.state);
-      if (!localStorage.getItem("account")) {
+      if (this.state.account === null) {
         return (
           <>
-            <a href={Setting.getSigninUrl()} style={{color: "#ffffff", marginLeft: "50px"}}>
+            <a href={Settings.getSigninUrl()} style={{color: "#ffffff", marginLeft: "50px"}}>
               管理员登录
             </a>
             <Link
@@ -206,11 +190,11 @@ export default class index extends Component {
     bindMenu = (menulist) => {
       if(this.state.account) {
         let menu;
-        if(this.state.account.user_type === "2") {
+        if(this.state.account.user_type === 2) {
           menu = menulist.filter(item => item.userPermission === "阅卷员");
-        }else if(this.state.account.user_type === "1") {
+        }else if(this.state.account.user_type === 1) {
           menu = menulist.filter(item => item.userPermission === "组长");
-        }else if(this.state.account.user_type) {
+        }else if(this.state.account.accessToken) {
           menu = menulist.filter(item => item.userPermission === "管理员");
         }else{
           menu = [];
@@ -231,7 +215,6 @@ export default class index extends Component {
     }
 
     onOpenChange = (openKeys) => {
-      console.log(openKeys);
       if (openKeys.length === 1 || openKeys.length === 0) {
         this.setState({
           openKeys,

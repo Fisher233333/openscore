@@ -5,7 +5,6 @@ import * as Setting from "../../../Setting";
 import axios from "axios";
 import * as Settings from "../../../Setting";
 import group from "../../../api/group";
-// const onFinish = (values: any) => {console.log('Received values of form: ', values);};
 export async function login(account, password) {
   return await new Promise((resolve) => {
     axios.post(`${Setting.ServerUrl}/login`, {
@@ -23,7 +22,7 @@ export default class normalLogin extends Component {
     onFinish = values => {
       group.UserLogin(values
       ).then(res => {
-        localStorage.setItem("account", res.data.data.user_type);
+        localStorage.setItem("account", JSON.stringify(res.data.data));
         if (res.data.status === "ok") {
           Settings.showMessage("success", "Logged in successfully");
           Settings.goToLink("/home");
