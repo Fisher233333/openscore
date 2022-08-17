@@ -1,5 +1,5 @@
 import React, {Component} from "react";
-import Cookies from "react-cookie";
+import Cookies from "react-cookies";
 import {Dropdown, Layout, Menu} from "antd";
 import DocumentTitle from "react-document-title";
 import {Link, Redirect, Route, Switch} from "react-router-dom";
@@ -72,20 +72,22 @@ export default class index extends Component {
     }
 
     userInfo = () => {
-      group.userInfo({supervisorId: 1})
-        .then((res) => {
-          if (res.data.status === "10000") {
-            this.setState({
-              userInfo: res.data.data.userInfo,
-            });
-            console.log(res.data.data.userInfo);
-            localStorage.setItem("userInfo", JSON.stringify(res.data.data.userInfo));
-          }
-        })
-        .catch((e) => {
-          console.log(e);
-        });
-      localStorage.setItem("userInfo", JSON.stringify(this.state.userInfo));
+      if(Cookies.load("openscore_session_id")) {
+        group.userInfo({supervisorId: 1})
+          .then((res) => {
+            if (res.data.status === "10000") {
+              this.setState({
+                userInfo: res.data.data.userInfo,
+              });
+              console.log(res.data.data.userInfo);
+              localStorage.setItem("userInfo", JSON.stringify(res.data.data.userInfo));
+            }
+          })
+          .catch((e) => {
+            console.log(e);
+          });
+        localStorage.setItem("userInfo", JSON.stringify(this.state.userInfo));
+      }
     }
     getAccount() {
       if(localStorage.getItem("account") === "") {
@@ -114,12 +116,14 @@ export default class index extends Component {
 
       AccountBackend.signout()
         .then((res) => {
-          localStorage.setItem("account", "");
+          localStorage.removeItem("account");
+          localStorage.removeItem("userInfo");
           if (res.status === "ok") {
             this.setState({
               account: null,
+              userInfo: null,
             });
-            Cookies.reomve("openscore_session_id");
+            Cookies.remove("openscore_session_id");
             Setting.showMessage("success", "Successfully logged out, redirected to homepage");
             Setting.goToLink("/");
           } else {
@@ -179,7 +183,8 @@ export default class index extends Component {
     }
 
     renderAccount() {
-      if (this.state.account === undefined || this.state.account === null) {
+      console.log("1111111111", this.state);
+      if (!localStorage.getItem("account")) {
         return (
           <>
             <a href={Setting.getSigninUrl()} style={{color: "#ffffff", marginLeft: "50px"}}>
